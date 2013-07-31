@@ -1,47 +1,24 @@
-#!/usr/bin/env ruby
-Dir.chdir File.dirname(__FILE__)
-require 'rubygems'
-require 'closure'
-%w{lib/browser_channel lib/browser_test_channel}.each do |file|
-  require File.expand_path file
-end
+require 'sinatra'
+require 'ir_b'
 
-unless String.respond_to? :bytesize
-  # This only patches in on Ruby 1.8.6
-  class String
-    alias :bytesize :size
+class ExampleApp < Sinatra::Base
+  configure :production, :development do
+    enable :logging
   end
-end
 
-Closure.add_source 'script', '/'
-Closure.add_source 'closure-library', '/closure-library'
-# Closure.config.compiler_jar = 'compiler.jar'
-# Closure.config.java = 'java'
-
-stack = proc {
-  use Closure::Middleware, 'script/index'
-  use Rack::CommonLogger
-  use Rack::Reloader, 1
-  map '/demo.channel' do
-    run BrowserChannel::Server.new
-  end
-  map '/demo.test' do
-    run BrowserTestChannel::Server.new
-  end
-  map '/' do
-    run Rack::File.new '.'
-  end
-}
-
-# Were we executed/loaded or used as a config.ru?
-if Rack::Builder === self
-  stack.call
-else
-  EventMachine.run do
-    Rack::Handler::Thin.run(Rack::Builder.new(&stack), :Port => 3000) do |server|
-      server.timeout = 35 # keep this timeout above keep_alive_interval
-      server.maximum_connections = 20_000
-      server.maximum_persistent_connections = 15_000
+  get "/" do
+    env['rack.hijack'].call
+    env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
+    env['rack.hijack_io'] << "Content-Type: plain/text\n\n"
+    3.times do |i|
+      env['rack.hijack_io'] << "#{i}\n"
+      env['rack.hijack_io'].flush
+      sleep 1
     end
+    env['rack.hijack_io'].close
   end
+end
+
+map '/' do
+  run ExampleApp.new
 end
