@@ -1,4 +1,5 @@
 require 'sinatra'
+require 'json'
 require 'ir_b'
 
 class ExampleApp < Sinatra::Base
@@ -6,7 +7,24 @@ class ExampleApp < Sinatra::Base
     enable :logging
   end
 
-  get "/" do
+  get "/test" do
+    host_prefix = nil
+    blocked_prefix = nil
+    if params["MODE"] == "init"
+      [
+        200,
+        {'Content-Type' => 'application/javascript'},
+        JSON.dump([host_prefix, blocked_prefix])
+      ]
+    else
+      [
+        404,
+        {'Content-Type' => 'application/javascript'},
+        ""
+      ]
+    end
+  end
+  get "/bind" do
     env['rack.hijack'].call
     env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
     env['rack.hijack_io'] << "Content-Type: plain/text\n\n"
