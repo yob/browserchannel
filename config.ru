@@ -42,12 +42,14 @@ class ExampleApp < Sinatra::Base
     env['rack.hijack'].call
     env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
     env['rack.hijack_io'] << "Content-Type: plain/text\n"
-    env['rack.hijack_io'] << "Content-Length: 6\n"
+    env['rack.hijack_io'] << "Transfer-Encoding: chunked\n"
     env['rack.hijack_io'] << "\n"
-    env['rack.hijack_io'] << "11111"
-    env['rack.hijack_io'].flush
+    env['rack.hijack_io'] << 5.to_s(16) << "\r\n"
+    env['rack.hijack_io'] << "11111\r\n"
     sleep 2
-    env['rack.hijack_io'] << "2"
+    env['rack.hijack_io'] << 1.to_s(16) << "\r\n"
+    env['rack.hijack_io'] << "2\r\n"
+
     env['rack.hijack_io'].close
   end
 end
