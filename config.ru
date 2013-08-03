@@ -39,11 +39,16 @@ class ExampleApp < Sinatra::Base
   end
 
   def buffering_proxy_test
-    [
-      404,
-      {'Content-Type' => 'application/javascript'},
-      ""
-    ]
+    env['rack.hijack'].call
+    env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
+    env['rack.hijack_io'] << "Content-Type: plain/text\n"
+    env['rack.hijack_io'] << "Content-Length: 6\n"
+    env['rack.hijack_io'] << "\n"
+    env['rack.hijack_io'] << "11111"
+    env['rack.hijack_io'].flush
+    sleep 2
+    env['rack.hijack_io'] << "2"
+    env['rack.hijack_io'].close
   end
 end
 
