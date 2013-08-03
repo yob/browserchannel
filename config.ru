@@ -8,20 +8,10 @@ class ExampleApp < Sinatra::Base
   end
 
   get "/test" do
-    host_prefix = nil
-    blocked_prefix = nil
     if params["MODE"] == "init"
-      [
-        200,
-        {'Content-Type' => 'application/javascript'},
-        JSON.dump([host_prefix, blocked_prefix])
-      ]
+      init_response
     else
-      [
-        404,
-        {'Content-Type' => 'application/javascript'},
-        ""
-      ]
+      buffering_proxy_test
     end
   end
   get "/bind" do
@@ -34,6 +24,26 @@ class ExampleApp < Sinatra::Base
       sleep 1
     end
     env['rack.hijack_io'].close
+  end
+
+  private
+
+  def init_response
+    host_prefix = nil
+    blocked_prefix = nil
+    [
+      200,
+      {'Content-Type' => 'application/javascript'},
+      JSON.dump([host_prefix, blocked_prefix])
+    ]
+  end
+
+  def buffering_proxy_test
+    [
+      404,
+      {'Content-Type' => 'application/javascript'},
+      ""
+    ]
   end
 end
 
