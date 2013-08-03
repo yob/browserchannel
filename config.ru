@@ -37,6 +37,6 @@ class ExampleApp < Sinatra::Base
   end
 end
 
-map '/' do
+map '/channel' do
   run ExampleApp.new
 end
