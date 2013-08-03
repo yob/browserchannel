@@ -1,10 +1,23 @@
 require 'sinatra'
 require 'json'
+require 'thread_safe'
 require 'ir_b'
+
+class Session
+
+  def initialize(id, array_id)
+
+  end
+
+end
 
 class ExampleApp < Sinatra::Base
   configure :production, :development do
     enable :logging
+  end
+
+  configure do
+    set :sessions, ThreadSafe::Hash.new
   end
 
   get "/test" do
@@ -15,15 +28,21 @@ class ExampleApp < Sinatra::Base
     end
   end
   get "/bind" do
-    env['rack.hijack'].call
-    env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
-    env['rack.hijack_io'] << "Content-Type: plain/text\n\n"
-    3.times do |i|
-      env['rack.hijack_io'] << "#{i}\n"
-      env['rack.hijack_io'].flush
-      sleep 1
+    sid = params["SID"]
+    aid = params["AID"]
+    puts "sid: #{sid}"
+    session = settings.sessions[sid] ||= Session.new(sid, aid)
+    puts "session: #{session.object_id}"
+    if params['TYPE'] == 'terminate'
+      #@session.terminate
+      terminate_session_response
+    elsif request.request_method == "GET"
+      # long lived backchannel sending data from the server to the client
+      handle_backchannel
+    elsif request.request_method == "POST"
+      # short lived forward-channel sending data from the client to the server
+      # @session.receive_upload(request.something)
     end
-    env['rack.hijack_io'].close
   end
 
   private
@@ -50,6 +69,26 @@ class ExampleApp < Sinatra::Base
     env['rack.hijack_io'] << 1.to_s(16) << "\r\n"
     env['rack.hijack_io'] << "2\r\n"
 
+    env['rack.hijack_io'].close
+  end
+
+  def terminate_session_response
+    [
+      200,
+      {'Content-Type' => 'application/javascript'},
+      ""
+    ]
+  end
+
+  def handle_backchannel
+    env['rack.hijack'].call
+    env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
+    env['rack.hijack_io'] << "Content-Type: plain/text\n\n"
+    3.times do |i|
+      env['rack.hijack_io'] << "#{i}\n"
+      env['rack.hijack_io'].flush
+      sleep 1
+    end
     env['rack.hijack_io'].close
   end
 end
