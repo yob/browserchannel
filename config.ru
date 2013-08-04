@@ -108,7 +108,7 @@ class ExampleApp < Sinatra::Base
 
     # short lived forward-channel sending data from the client to the server
     session.receive_data(request.body.read)
-    [404]
+    [404, {}, ""]
   end
 
   def send_chunk(array)
