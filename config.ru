@@ -1,12 +1,15 @@
 require 'sinatra'
 require 'json'
+require 'securerandom'
 require 'thread_safe'
 require 'ir_b'
 
 class Session
 
-  def initialize(id, array_id)
+  attr_reader :id
 
+  def initialize
+    @id = SecureRandom.hex
   end
 
 end
@@ -30,10 +33,17 @@ class ExampleApp < Sinatra::Base
   get "/bind" do
     sid = params["SID"]
     aid = params["AID"]
-    puts "sid: #{sid}"
-    session = settings.sessions[sid] ||= Session.new(sid, aid)
-    puts "session: #{session.object_id}"
-    if params['TYPE'] == 'terminate'
+    if sid
+      session = settings.sessions[sid]
+    else
+      session = Session.new
+      settings.sessions[session.id] ||= session
+      # TODO send the new session details
+    end
+
+    if session.nil?
+      notfound_response
+    elsif params['TYPE'] == 'terminate'
       #@session.terminate
       terminate_session_response
     elsif request.request_method == "GET"
@@ -46,6 +56,14 @@ class ExampleApp < Sinatra::Base
   end
 
   private
+
+  def notfound_response
+    [
+      404,
+      {'Content-Type' => 'application/javascript'},
+      ""
+    ]
+  end
 
   def init_response
     host_prefix = nil
