@@ -32,6 +32,7 @@ class Session
 
   # data POSTed by the client arrives here
   def receive_data(data)
+    return false
     raise "Not Implemented Yet #{data.inspect}"
 
     @mutex.synchronize do
