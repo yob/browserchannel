@@ -2,6 +2,7 @@ require 'sinatra'
 require 'json'
 require 'securerandom'
 require 'thread_safe'
+require 'thread'
 require 'ir_b'
 
 class Session
@@ -10,6 +11,60 @@ class Session
 
   def initialize
     @id = SecureRandom.hex
+    @backchannel = nil
+    @sent_create_session_chunk = false
+    @mutex = Mutex.new
+    @messages = ThreadSafe::Array.new
+    @message_count = 0
+  end
+
+  # queues an array of data to be sent back to the client
+  #
+  def push(array)
+    @mutex.synchronize do
+      @message_count += 1
+      @messages << [@message_count, array]
+      if @backchannel
+        flush_messages
+      end
+    end
+  end
+
+  # data POSTed by the client arrives here
+  def receive_data(data)
+    raise "Not Implemented Yet #{data.inspect}"
+
+    @mutex.synchronize do
+      session_bound = @backchannel ? 1 : 0
+      pending_bytes = @messages.empty? ? 0 : JSON.dump(@messages).bytesize
+      response = [session_bound, @message_count, pending_bytes]
+      #@handler.call post_data
+      response
+    end
+  end
+
+  def add_backchannel(connection)
+    @mutex.synchronize do
+      @backchannel = connection
+      unless @sent_create_session_chunk
+        @backchannel.send_chunk(["c", @id, "", 8])
+        @sent_create_session_chunk = true
+      end
+      flush_messages
+    end
+  end
+
+  def terminate
+    push(["stop"])
+    @backchannel.close
+  end
+
+  private
+
+  def flush_messages
+    @messages.each do |msg|
+      @backchannel.send_chunk(@message.shift)
+    end
   end
 
 end
@@ -44,15 +99,26 @@ class ExampleApp < Sinatra::Base
     if session.nil?
       notfound_response
     elsif params['TYPE'] == 'terminate'
-      #@session.terminate
+      settings.sessions.delete(session.id)
+      session.terminate
       terminate_session_response
     elsif request.request_method == "GET"
       # long lived backchannel sending data from the server to the client
-      handle_backchannel
+      handle_backchannel(session)
     elsif request.request_method == "POST"
       # short lived forward-channel sending data from the client to the server
       # @session.receive_upload(request.something)
     end
+  end
+
+  def send_chunk(array)
+    payload = JSON.dump(array)
+    env['rack.hijack_io'] << payload.bytesize.to_s(16) << "\r\n"
+    env['rack.hijack_io'] << "#{payload}\r\n"
+  end
+
+  def close
+    env['rack.hijack_io'].close
   end
 
   private
@@ -98,17 +164,16 @@ class ExampleApp < Sinatra::Base
     ]
   end
 
-  def handle_backchannel
+  def handle_backchannel(bcSession)
     env['rack.hijack'].call
     env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
-    env['rack.hijack_io'] << "Content-Type: plain/text\n\n"
-    3.times do |i|
-      env['rack.hijack_io'] << "#{i}\n"
-      env['rack.hijack_io'].flush
-      sleep 1
-    end
-    env['rack.hijack_io'].close
+    env['rack.hijack_io'] << "Content-Type: plain/text\n"
+    env['rack.hijack_io'] << "Transfer-Encoding: chunked\n\n"
+    bcSession.add_backchannel(self)
+    #env['rack.hijack_io'])
+    #env['rack.hijack_io'].close
   end
+
 end
 
 map '/channel' do
