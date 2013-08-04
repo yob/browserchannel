@@ -71,12 +71,15 @@ class Session
 end
 
 class ExampleApp < Sinatra::Base
+  set :protection, :except => :http_options
+  set :sessions, false
+
   configure :production, :development do
     enable :logging
   end
 
   configure do
-    set :sessions, ThreadSafe::Hash.new
+    set :bcSessions, ThreadSafe::Hash.new
   end
 
   get "/test" do
@@ -87,29 +90,25 @@ class ExampleApp < Sinatra::Base
     end
   end
   get "/bind" do
-    sid = params["SID"]
     aid = params["AID"]
-    if sid
-      session = settings.sessions[sid]
-    else
-      session = Session.new
-      settings.sessions[session.id] ||= session
-      # TODO send the new session details
-    end
-
+    session = get_or_create_session(params["SID"])
     if session.nil?
       notfound_response
     elsif params['TYPE'] == 'terminate'
-      settings.sessions.delete(session.id)
+      settings.bcSessions.delete(session.id)
       session.terminate
       terminate_session_response
-    elsif request.request_method == "GET"
+    else
       # long lived backchannel sending data from the server to the client
       handle_backchannel(session)
-    elsif request.request_method == "POST"
-      # short lived forward-channel sending data from the client to the server
-      # @session.receive_upload(request.something)
     end
+  end
+  post "/bind" do
+    session = get_or_create_session(params["SID"])
+
+    # short lived forward-channel sending data from the client to the server
+    session.receive_data(request.body.read)
+    [404]
   end
 
   def send_chunk(array)
@@ -123,6 +122,17 @@ class ExampleApp < Sinatra::Base
   end
 
   private
+
+  def get_or_create_session(sid)
+    if sid
+      session = settings.bcSessions[sid]
+    else
+      session = Session.new
+      settings.bcSessions[session.id] ||= session
+      # TODO send the new session details
+    end
+    session
+  end
 
   def notfound_response
     [
