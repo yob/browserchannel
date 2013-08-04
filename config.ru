@@ -71,7 +71,7 @@ class Session
 end
 
 class ExampleApp < Sinatra::Base
-  set :protection, :except => :http_options
+  disable :protection
   set :sessions, false
 
   configure :production, :development do
