@@ -7,12 +7,11 @@ require 'ir_b'
 
 class Session
 
-  attr_reader :id
+  attr_reader :id, :message_count
 
   def initialize
     @id = SecureRandom.hex
     @backchannel = nil
-    @sent_create_session_chunk = false
     @mutex = Mutex.new
     @messages = ThreadSafe::Array.new
     @message_count = 0
@@ -32,9 +31,6 @@ class Session
 
   # data POSTed by the client arrives here
   def receive_data(data)
-    return false
-    raise "Not Implemented Yet #{data.inspect}"
-
     @mutex.synchronize do
       session_bound = @backchannel ? 1 : 0
       pending_bytes = @messages.empty? ? 0 : JSON.dump(@messages).bytesize
@@ -47,10 +43,6 @@ class Session
   def add_backchannel(connection)
     @mutex.synchronize do
       @backchannel = connection
-      unless @sent_create_session_chunk
-        @backchannel.send_chunk(["c", @id, "", 8])
-        @sent_create_session_chunk = true
-      end
       flush_messages
     end
   end
@@ -103,12 +95,34 @@ class ExampleApp < Sinatra::Base
       handle_backchannel(session)
     end
   end
-  post "/bind" do
-    session = get_or_create_session(params["SID"])
 
-    # short lived forward-channel sending data from the client to the server
-    session.receive_data(request.body.read)
-    [404, {}, ""]
+  # short lived forward-channel sending data from the client to the server
+  post "/bind" do
+    bcSession = get_or_create_session(params["SID"])
+    msg_count = params["count"].to_i
+    response = nil
+    msg_count.times do |i|
+      payload = params["req#{i}_JSON"] || "{}"
+      response = bcSession.receive_data(JSON.parse(payload))
+    end
+    headers = {
+      'Content-Type' => 'text/plain',
+      'Cache-Control' => 'no-cache, no-store, max-age=0, must-revalidate',
+      'X-Content-Type-Options' => 'nosniff',
+      'Access-Control-Allow-Origin' => "*",
+      'Access-Control-Max-Age' => '3600',
+      #'Date' => ''
+    }
+    if bcSession.message_count == 0
+      # this is a new session and we need to send a special response
+      response = JSON.dump([[0,["c",bcSession.id,nil,8]]])
+      response = "#{response.size}\n#{response}"
+      headers["Content-Length"] = response.bytesize
+      [200, headers, response]
+    else
+      # this is an existing session and we need to send a book-keeping response
+      [200, headers, JSON.dump(response)]
+    end
   end
 
   def send_chunk(array)
