@@ -134,9 +134,18 @@ class ExampleApp < Sinatra::Base
   def init_response
     host_prefix = nil
     blocked_prefix = nil
+    headers = {
+      'Content-Type' => 'text/plain',
+      'Cache-Control' => 'no-cache, no-store, max-age=0, must-revalidate',
+      'X-Content-Type-Options' => 'nosniff',
+      'X-Accept' => "application/json; application/x-www-form-urlencoded",
+      'Access-Control-Allow-Origin' => "*",
+      'Access-Control-Max-Age' => '3600',
+      #'Date' => ''
+    }
     [
       200,
-      {'Content-Type' => 'application/javascript'},
+      headers,
       JSON.dump([host_prefix, blocked_prefix])
     ]
   end
@@ -144,7 +153,11 @@ class ExampleApp < Sinatra::Base
   def buffering_proxy_test
     env['rack.hijack'].call
     env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
+    env['rack.hijack_io'] << "Access-Control-Allow-Origin: *\n"
+    env['rack.hijack_io'] << "Access-Control-Max-Age: 3600\n"
     env['rack.hijack_io'] << "Content-Type: plain/text\n"
+    env['rack.hijack_io'] << "Cache-Control: no-cache, no-store, max-age=0, must-revalidate\n"
+    env['rack.hijack_io'] << "X-Content-Type-Options: nosniff\n"
     env['rack.hijack_io'] << "Transfer-Encoding: chunked\n"
     env['rack.hijack_io'] << "\n"
     env['rack.hijack_io'] << 5.to_s(16) << "\r\n"
@@ -154,6 +167,8 @@ class ExampleApp < Sinatra::Base
     env['rack.hijack_io'] << "2\r\n"
 
     env['rack.hijack_io'].close
+  rescue Errno::EPIPE
+    # the client closed the connection and we're OK with that
   end
 
   def terminate_session_response
