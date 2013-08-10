@@ -48,6 +48,13 @@ class Session
       @backchannel = connection
       flush_messages
     end
+    Thread.new do
+      3.times do
+        sleep 25
+        self.push ["noop"]
+      end
+      self.terminate
+    end
   end
 
   def terminate
