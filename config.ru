@@ -146,6 +146,7 @@ class ExampleApp < Sinatra::Base
     puts "#send_chunk #{data.inspect}"
     env['rack.hijack_io'] << data.bytesize.to_s(16) << "\r\n"
     env['rack.hijack_io'] << "#{data}\r\n"
+    env['rack.hijack_io'] << "\r\n"
     env['rack.hijack_io'].flush
   end
 
@@ -206,9 +207,11 @@ class ExampleApp < Sinatra::Base
     env['rack.hijack_io'] << "\n"
     env['rack.hijack_io'] << 5.to_s(16) << "\r\n"
     env['rack.hijack_io'] << "11111\r\n"
+    env['rack.hijack_io'] << "\r\n"
     sleep 2
     env['rack.hijack_io'] << 1.to_s(16) << "\r\n"
     env['rack.hijack_io'] << "2\r\n"
+    env['rack.hijack_io'] << "\r\n"
 
     env['rack.hijack_io'].close
   rescue Errno::EPIPE
