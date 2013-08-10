@@ -15,6 +15,7 @@ class Session
     @mutex = Mutex.new
     @messages = ThreadSafe::Array.new
     @message_count = 0
+    self.push(auth: "1d5915528c74a1cf9069ce0e8754aa93")
   end
 
   # queues an array of data to be sent back to the client
@@ -119,7 +120,7 @@ class ExampleApp < Sinatra::Base
       'Access-Control-Max-Age' => '3600',
       #'Date' => ''
     }
-    if bcSession.message_count == 0
+    if bcSession.message_count == 1
       # this is a new session and we need to send a special response
       response = JSON.dump([[0,["c",bcSession.id,nil,8]]])
       response = "#{response.size}\n#{response}"
