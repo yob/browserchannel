@@ -190,6 +190,7 @@ class ExampleApp < Sinatra::Base
     env['rack.hijack_io'] << "Content-Type: plain/text\n"
     env['rack.hijack_io'] << "Cache-Control: no-cache, no-store, max-age=0, must-revalidate\n"
     env['rack.hijack_io'] << "X-Content-Type-Options: nosniff\n"
+    env['rack.hijack_io'] << "Date: #{header_formatted_time}\n"
     env['rack.hijack_io'] << "Transfer-Encoding: chunked\n"
     env['rack.hijack_io'] << "\n"
     env['rack.hijack_io'] << 5.to_s(16) << "\r\n"
@@ -211,10 +212,20 @@ class ExampleApp < Sinatra::Base
     ]
   end
 
+  def header_formatted_time
+    Time.now.utc.strftime("%a, %d %b %Y %H:%M:%S %Z")
+  end
+
   def handle_backchannel(bcSession)
     env['rack.hijack'].call
     env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
+    env['rack.hijack_io'] << "Access-Control-Allow-Origin: *\n"
+    env['rack.hijack_io'] << "Access-Control-Max-Age: 3600\n"
     env['rack.hijack_io'] << "Content-Type: plain/text\n"
+    env['rack.hijack_io'] << "Cache-Control: no-cache, no-store, max-age=0, must-revalidate\n"
+    env['rack.hijack_io'] << "X-Content-Type-Options: nosniff\n"
+    env['rack.hijack_io'] << "Date: #{header_formatted_time}\n"
+    env['rack.hijack_io'] << "Connection: keep-alive\n"
     env['rack.hijack_io'] << "Transfer-Encoding: chunked\n\n"
     bcSession.add_backchannel(self)
     #env['rack.hijack_io'])
