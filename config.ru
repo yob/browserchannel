@@ -71,7 +71,7 @@ class Session
   def flush_messages
     log "#flush_messages #{@messages.inspect}"
     while @messages.any?
-      payload = JSON.dump(@messages.shift)
+      payload = JSON.dump([@messages.shift])
       payload_with_len = "#{payload.bytesize}\n#{payload}"
       @backchannel.send_chunk(payload_with_len)
     end
