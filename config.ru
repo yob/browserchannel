@@ -35,6 +35,10 @@ class Session
   # data POSTed by the client arrives here
   def receive_data(data)
     log "#receive_data #{data.inspect}"
+    # {"doc"=>"test-document", "open"=>true, "snapshot"=>nil, "type"=>"text", "create"=>true}
+    if data["doc"] == "test-document" && data["create"]
+      self.push(doc: "test-document", create: true, meta: true, open: true, v: 0)
+    end
     @mutex.synchronize do
       session_bound = @backchannel ? 1 : 0
       pending_bytes = @messages.empty? ? 0 : JSON.dump(@messages).bytesize
