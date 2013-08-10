@@ -20,6 +20,7 @@ class Session
   # queues an array of data to be sent back to the client
   #
   def push(array)
+    log "#push #{array.inspect}"
     @mutex.synchronize do
       @message_count += 1
       @messages << [@message_count, array]
@@ -31,6 +32,7 @@ class Session
 
   # data POSTed by the client arrives here
   def receive_data(data)
+    log "#receive_data #{data.inspect}"
     @mutex.synchronize do
       session_bound = @backchannel ? 1 : 0
       pending_bytes = @messages.empty? ? 0 : JSON.dump(@messages).bytesize
@@ -53,6 +55,10 @@ class Session
   end
 
   private
+
+  def log(msg)
+    puts "#{@id} #{msg}"
+  end
 
   def flush_messages
     @messages.each do |msg|
