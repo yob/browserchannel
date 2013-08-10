@@ -198,7 +198,7 @@ class ExampleApp < Sinatra::Base
     env['rack.hijack_io'] << "HTTP/1.1 200 OK\n"
     env['rack.hijack_io'] << "Access-Control-Allow-Origin: *\n"
     env['rack.hijack_io'] << "Access-Control-Max-Age: 3600\n"
-    env['rack.hijack_io'] << "Content-Type: plain/text\n"
+    env['rack.hijack_io'] << "Content-Type: text/plain\n"
     env['rack.hijack_io'] << "Cache-Control: no-cache, no-store, max-age=0, must-revalidate\n"
     env['rack.hijack_io'] << "X-Content-Type-Options: nosniff\n"
     env['rack.hijack_io'] << "Date: #{header_formatted_time}\n"
