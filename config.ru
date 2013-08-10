@@ -62,8 +62,11 @@ class Session
   end
 
   def flush_messages
-    @messages.each do |msg|
-      @backchannel.send_chunk(@message.shift)
+    log "#flush_messages #{@messages.inspect}"
+    while @messages.any?
+      payload = JSON.dump(@messages.shift)
+      payload_with_len = "#{payload.bytesize}\n#{payload}"
+      @backchannel.send_chunk(payload_with_len)
     end
   end
 
@@ -132,10 +135,11 @@ class ExampleApp < Sinatra::Base
     end
   end
 
-  def send_chunk(array)
-    payload = JSON.dump(array)
-    env['rack.hijack_io'] << payload.bytesize.to_s(16) << "\r\n"
-    env['rack.hijack_io'] << "#{payload}\r\n"
+  def send_chunk(data)
+    puts "#send_chunk #{data.inspect}"
+    env['rack.hijack_io'] << data.bytesize.to_s(16) << "\r\n"
+    env['rack.hijack_io'] << "#{data}\r\n"
+    env['rack.hijack_io'].flush
   end
 
   def close
