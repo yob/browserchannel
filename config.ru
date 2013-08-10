@@ -7,7 +7,7 @@ require 'ir_b'
 
 class Session
 
-  attr_reader :id, :message_count
+  attr_reader :id, :message_count, :sent_count
 
   def initialize
     @id = SecureRandom.hex(4)
@@ -15,6 +15,7 @@ class Session
     @mutex = Mutex.new
     @messages = ThreadSafe::Array.new
     @message_count = 0
+    @sent_count = 0
     self.push(auth: "1d5915528c74a1cf9069ce0e8754aa93")
   end
 
@@ -73,6 +74,7 @@ class Session
       payload = JSON.dump([@messages.shift])
       payload_with_len = "#{payload.bytesize}\n#{payload}"
       @backchannel.send_chunk(payload_with_len)
+      @sent_count += 1
     end
   end
 
@@ -129,7 +131,7 @@ class ExampleApp < Sinatra::Base
       'Access-Control-Max-Age' => '3600',
       #'Date' => ''
     }
-    if bcSession.message_count == 1
+    if bcSession.sent_count == 0
       # this is a new session and we need to send a special response
       response = JSON.dump([[0,["c",bcSession.id,nil,8]]])
       response = "#{response.size}\n#{response}"
