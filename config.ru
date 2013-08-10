@@ -10,7 +10,7 @@ class Session
   attr_reader :id, :message_count
 
   def initialize
-    @id = SecureRandom.hex
+    @id = SecureRandom.hex(4)
     @backchannel = nil
     @mutex = Mutex.new
     @messages = ThreadSafe::Array.new
