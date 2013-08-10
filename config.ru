@@ -53,7 +53,6 @@ class Session
         sleep 25
         self.push ["noop"]
       end
-      self.terminate
     end
   end
 
