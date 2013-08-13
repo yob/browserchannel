@@ -44,7 +44,9 @@ module BrowserChannel
       response = nil
       msg_count.times do |i|
         payload = params["req#{i}_JSON"] || "{}"
-        response = bcSession.receive_data(JSON.parse(payload))
+        json_payload = JSON.parse(payload)
+        response = bcSession.receive_data(json_payload)
+        on_message(json_payload)
       end
       headers = {
         'Content-Type' => 'text/plain',
@@ -76,6 +78,14 @@ module BrowserChannel
 
     def close
       env['rack.hijack_io'].close
+    end
+
+    def on_message(raw_message)
+      # subclasses should implement this
+    end
+
+    def send_message(value)
+      
     end
 
     private
